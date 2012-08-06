@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style type="text/css">
+    body { margin: 0; }
+  </style>
+
+  <script type="text/javascript" src="lib/boot.js"></script>
+
+  <style type="text/css">
+    #gameboard { margin: 25px; border: solid 3px #99ccff; }
+  </style>
+</head>
+<body>
+  <canvas id="gameboard" width="400" height="400"></canvas>
+  <script>
+    loader = new Loader();
+    loader.load("lib/class.js");
+    loader.load("lib/input.js", null, ["lib/class.js"]);
+    loader.load("lib/game_object.js", null, ["lib/class.js"]);
+    loader.load("lib/game_board.js");
+    loader.load("lib/block.js", null, ["lib/game_object.js"]);
+    loader.load("lib/spawn.js", null, ["lib/block.js"]);
+    loader.load("lib/elevator.js", null, ["lib/block.js"]);
+    loader.load("lib/player.js", null, ["lib/game_object.js"]);
+    loader.load("lib/map.json", function(lib) {});
+
+    loader.wait(function(){
+      // DOM elements
+      var canvas = document.getElementById("gameboard");
+      var context = canvas.getContext("2d");
+      var input = new Input();
+      var board = new GameBoard(context);
+      var max_fps = 60;
+      board.time_last = Date.now();
+      board.time_now = Date.now();
+      board.time_delta;
+      board.gravity = 1200;
+      board.jumpVel = 300;
+      board.jumpLength = 80;
+      var jumpButton = KEY_UP;
+      var leftButton = KEY_LEFT;
+      var rightButton = KEY_RIGHT;
+      board.maxMoveVelocity = 200;
+      board.moveAccel = 1500;
+
+      board.viewport = { "x": 0, "y": 0 }
+
+      function log(text, linenum) {
+        context.fillStyle    = '#00f';
+        context.font         = '10px monospace';
+        context.textBaseline = 'top';
+        context.fillText(text, 10, linenum * 13);
+      }
+
+      window.addEventListener("resize", resizeCanvas, false); 
+
+      var spawn;
+
+      // Load Map
+      board.map = map;
+      for (var key in map) {
+        switch (key) {
+          case "objects":
+            for (var i = 0; i < map.objects.length; i++) {
+              var obj = map.objects[i];
+              switch (obj.type) {
+                case "spawn":
+                  var gp = new Spawn(board, obj);
+                  board.addObject(gp);
+                  spawn = gp;
+                break
+                case "block":
+                  var gp = new Block(board, obj);
+                  board.addObject(gp);
+                break;
+                case "elevator":
+                  var gp = new Elevator(board, obj);
+                  board.addObject(gp);
+                break;
+              }
+            }
+          break;
+        }
+      }
+
+      // Load Background Images
+      for (var i = 0; i < map.backgrounds.length; i++) {
+        var b = map.backgrounds[i];
+        b.image = new Image();
+        b.image.src = b.src;
+      }
+
+      // Player Pos
+      var player = new Player(board);
+      player.name = "Player";
+     
+      player.height = 16;
+      player.width = 12;
+      player.xVel = 0;
+      player.yVel = 0;
+      player.canFall = true;
+      loader.load("client/img/mouse.png", function(lib) {
+        player.image = lib.obj;
+        board.addObject(player);
+      });
+
+      var nme = new Block();
+      nme.x =300;
+      nme.y = 100;
+      nme.width = 10;
+      nme.height= 24;
+      nme.canFall = true;
+      board.addObject(nme);
+
+      function resizeCanvas() {
+        canvas.width = 600;//window.innerWidth;
+        canvas.height = 400; //window.innerHeight;
+        board.viewport.width = canvas.width;
+        board.viewport.height = canvas.height;
+      }
+
+      function spawnPlayer(player) {
+        player.onGround = false;
+        player.yVel = 0;
+        player.xVel = 0;
+        player.x = spawn.x + (spawn.width / 2) - (player.width / 2);
+        player.y = spawn.y + (spawn.height / 2) - (player.height / 2);
+      }
+
+      function startGame() {
+        spawnPlayer(player);
+      }
+      
+      function update() {
+        board.time_now = Date.now();
+        board.time_delta = (board.time_now - board.time_last);
+        board.time_last = board.time_now;
+        board.delta = board.time_delta / 1000;
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+    
+        // Player Input
+        if (input.pressed(jumpButton)) { player.jump(); } 
+        if (input.pressed(rightButton)) { player.moveRight(); }
+        if (input.pressed(leftButton)) { player.moveLeft(); }
+      
+        board.react();
+        
+        // Collision Detection
+        document.title = board.objects.length;
+        for (var j = 0; j < board.objects.length; j++) {
+          var movableObj = board.objects[j];
+          if (movableObj.canFall) {
+            for (var i = 0; i < board.objects.length; i++) {
+              var obj = board.objects[i];
+              if (obj !== movableObj && obj.clip === true) {
+
+                var left = (obj.x + obj.width - movableObj.x);
+                var right = (movableObj.x + movableObj.width - obj.x); 
+                var top = (obj.y + obj.height - movableObj.y);
+                var bottom = (movableObj.y + movableObj.height - obj.y); 
+
+                if (left > 0  && right > 0 && top > 0 && bottom > 0) {
+                  obj.collide(movableObj, [top, right, bottom, left]);
+                }
+              }
+            }
+          }
+        }
+
+        // Death Detection
+        if (player.y - 16 > board.map.height) {
+          spawnPlayer(player);
+        }
+
+        board.viewport.x = Math.min(Math.max(player.x - (board.viewport.width / 2), 0), board.map.width - board.viewport.width);
+        board.viewport.y = Math.min(player.y- (board.viewport.height / 2), board.map.sealevel - board.viewport.height);
+
+        board.draw();
+
+        // Render Stats
+        log("(" + Math.round(player.x) + "," + Math.round(player.y) + ") yv" + Math.round(player.yVel) + " xv" + Math.round(player.xVel), 1);
+        log("FPS: " + Math.round(1000 / board.time_delta), 2);
+        //log("Camera (" + Math.round(board.camera.x) + "," + Math.round(board.camera.y) + ")",3);
+        log("view (" + Math.round(board.viewport.x) + "," + Math.round(board.viewport.y) + ")",4);
+
+        setTimeout(update, (1000/max_fps) - (Date.now() - board.time_now));
+      }
+
+      resizeCanvas();
+
+      function animateLoad() {
+        if (loader.ready()) {
+          startGame();
+          update();
+        } else {
+          setTimeout(animateLoad, 100);
+        }
+      } animateLoad();
+
+
+      var clickPoint = null;
+      canvas.addEventListener('mouseup', function(e){
+        if (clickPoint === null) {
+          clickPoint = [e.offsetX, e.offsetY];
+        } else {
+          var left = Math.min(e.offsetX, clickPoint[0]) + board.viewport.x;
+          var right = Math.max(e.offsetX, clickPoint[0]) + board.viewport.x;
+          var top = Math.min(e.offsetY, clickPoint[1]) + board.viewport.y;
+          var bottom = Math.max(e.offsetY, clickPoint[1]) + board.viewport.y;
+          var gp = new Block(board, {"x":left, "y":top, "height":bottom-top, "width":right-left, "background":"client/img/gray_brick.gif"});
+          gp.clip = true;
+          board.addObject(gp);
+          clickPoint = null;
+        }
+      });
+
+    });
+
+  </script>
+</body>
+</html>

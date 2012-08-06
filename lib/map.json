@@ -1,0 +1,26 @@
+var map = {
+  "width": 2600, 
+  "height": 480,
+  "sealevel": 260,
+  "objects": [
+    { "type":"spawn", "x":234, "y":70, "height":28, "width":20 },
+    { "type":"block", "x":10, "y":200, "height":32, "width":20, "background":"client/img/gray_brick.gif" }, 
+    { "type":"block", "x":230, "y":125, "height":50, "width":30, "background":"client/img/gray_brick.gif" },
+    { "type":"block", "x":150, "y":200, "height":16, "width":300, "background":"client/img/gray_brick.gif" },
+    { "type":"block", "x":284, "y":165, "height":8, "width":200, "background":"client/img/gray_brick.gif" },
+    { "type":"block", "x":320, "y":284, "height":6, "width":100, "background":"client/img/gray_brick.gif" },
+    { "type":"block", "x":684, "y":165, "height":8, "width":200, "background":"client/img/gray_brick.gif" },
+    { "type":"block", "x":684, "y":165, "height":8, "width":1000, "background":"client/img/gray_brick.gif" },
+    { "type":"elevator", "x1":500, "y1":100, "x2":480, "y2":280, "interval":4000, "height":5, "width":30, "friction":1200, "background":"client/img/gray_brick.gif" },
+    { "type":"elevator", "x1":540, "y1":100, "x2":540, "y2":250, "interval":5000, "height":5, "width":30, "friction":1200, "background":"client/img/gray_brick.gif" },
+    { "type":"elevator", "x1":580, "y1":190, "x2":610, "y2":190, "interval":3000, "height":5, "width":60, "friction":1200, "background":"client/img/gray_brick.gif" }
+  ],
+  "backgrounds": [
+    { "src":"client/img/sky1.jpg", "distance":100 },
+    { "src":"client/img/cloud-3.png", "distance":12 },
+    { "src":"client/img/mountain.png", "distance":10 },
+    { "src":"client/img/cloud-2.png", "distance":8 },
+    { "src":"client/img/cloud-1.png", "distance":6 },
+    { "src":"client/img/trees.png", "distance":4 }
+  ]
+}
